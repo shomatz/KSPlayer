@@ -10,6 +10,12 @@ import AVFAudio
 import CoreAudio
 
 public final class AudioGraphPlayer: AudioOutput, AudioDynamicsProcessor {
+    public var delegate: (any AudioOutputDelegate)?
+    
+    public var bypass: Bool = false
+    
+    public var equalizer: [Float] = []
+    
     public private(set) var audioUnitForDynamicsProcessor: AudioUnit
     private let graph: AUGraph
     private var audioUnitForMixer: AudioUnit!

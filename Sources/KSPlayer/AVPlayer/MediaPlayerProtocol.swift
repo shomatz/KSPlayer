@@ -66,6 +66,8 @@ public struct Chapter {
 
 public protocol MediaPlayerProtocol: MediaPlayback {
     var delegate: MediaPlayerDelegate? { get set }
+    var bypass: Bool { get set }
+    var equalizer: [Float] { get set }
     var view: UIView? { get }
     var playableTime: TimeInterval { get }
     var isReadyToPlay: Bool { get }
@@ -112,6 +114,7 @@ public protocol MediaPlayerDelegate: AnyObject {
     func changeBuffering(player: some MediaPlayerProtocol, progress: Int)
     func playBack(player: some MediaPlayerProtocol, loopCount: Int)
     func finish(player: some MediaPlayerProtocol, error: Error?)
+    func audioData(data: [Float])
 }
 
 public protocol MediaPlayerTrack: AnyObject, CustomStringConvertible {

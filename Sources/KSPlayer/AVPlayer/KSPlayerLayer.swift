@@ -62,6 +62,7 @@ public protocol KSPlayerLayerDelegate: AnyObject {
     func player(layer: KSPlayerLayer, currentTime: TimeInterval, totalTime: TimeInterval)
     func player(layer: KSPlayerLayer, finish error: Error?)
     func player(layer: KSPlayerLayer, bufferedCount: Int, consumeTime: TimeInterval)
+    func audioData(data: [Float])
 }
 
 open class KSPlayerLayer: NSObject {
@@ -209,9 +210,7 @@ open class KSPlayerLayer: NSObject {
         self.isAutoPlay = isAutoPlay
         super.init()
         player.playbackRate = options.startPlayRate
-        if options.registerRemoteControll {
-            registerRemoteControllEvent()
-        }
+
         player.delegate = self
         player.contentMode = .scaleAspectFit
         if isAutoPlay {
@@ -242,19 +241,6 @@ open class KSPlayerLayer: NSObject {
             player.pipController?.contentSource = nil
         }
         NotificationCenter.default.removeObserver(self)
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
-        MPRemoteCommandCenter.shared().playCommand.removeTarget(nil)
-        MPRemoteCommandCenter.shared().pauseCommand.removeTarget(nil)
-        MPRemoteCommandCenter.shared().togglePlayPauseCommand.removeTarget(nil)
-        MPRemoteCommandCenter.shared().stopCommand.removeTarget(nil)
-        MPRemoteCommandCenter.shared().nextTrackCommand.removeTarget(nil)
-        MPRemoteCommandCenter.shared().previousTrackCommand.removeTarget(nil)
-        MPRemoteCommandCenter.shared().changeRepeatModeCommand.removeTarget(nil)
-        MPRemoteCommandCenter.shared().changePlaybackRateCommand.removeTarget(nil)
-        MPRemoteCommandCenter.shared().skipForwardCommand.removeTarget(nil)
-        MPRemoteCommandCenter.shared().skipBackwardCommand.removeTarget(nil)
-        MPRemoteCommandCenter.shared().changePlaybackPositionCommand.removeTarget(nil)
-        MPRemoteCommandCenter.shared().enableLanguageOptionCommand.removeTarget(nil)
         options.playerLayerDeinit()
     }
 
@@ -352,6 +338,10 @@ open class KSPlayerLayer: NSObject {
 // MARK: - MediaPlayerDelegate
 
 extension KSPlayerLayer: MediaPlayerDelegate {
+    public func audioData(data: [Float]) {
+        delegate?.audioData(data: data)
+    }
+    
     public func readyToPlay(player: some MediaPlayerProtocol) {
         state = .readyToPlay
         #if os(macOS)
@@ -371,14 +361,6 @@ extension KSPlayerLayer: MediaPlayerDelegate {
             }
         }
         #endif
-        #if !os(macOS) && !os(tvOS)
-        if #available(iOS 14.2, *) {
-            if options.canStartPictureInPictureAutomaticallyFromInline {
-                player.pipController?.canStartPictureInPictureAutomaticallyFromInline = true
-            }
-        }
-        #endif
-        updateNowPlayingInfo()
         if isAutoPlay {
             if shouldSeekTo > 0 {
                 seek(time: shouldSeekTo, autoPlay: true) { [weak self] _ in
@@ -463,9 +445,6 @@ extension KSPlayerLayer: MediaPlayerDelegate {
             guard let self else { return }
             delegate?.player(layer: self, finish: error)
         }
-        if error == nil {
-            nextPlayer()
-        }
     }
 }
 
@@ -492,155 +471,8 @@ extension KSPlayerLayer {
         player.prepareToPlay()
     }
 
-    private func updateNowPlayingInfo() {
-        if MPNowPlayingInfoCenter.default().nowPlayingInfo == nil {
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = [MPMediaItemPropertyPlaybackDuration: player.duration]
-        } else {
-            MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyPlaybackDuration] = player.duration
-        }
-        if MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyTitle] == nil, let title = player.dynamicInfo?.metadata["title"] {
-            MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyTitle] = title
-        }
-        if MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtist] == nil, let artist = player.dynamicInfo?.metadata["artist"] {
-            MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtist] = artist
-        }
-        var current: [MPNowPlayingInfoLanguageOption] = []
-        var langs: [MPNowPlayingInfoLanguageOptionGroup] = []
-        for track in player.tracks(mediaType: .audio) {
-            if let lang = track.language {
-                let audioLang = MPNowPlayingInfoLanguageOption(type: .audible, languageTag: lang, characteristics: nil, displayName: track.name, identifier: track.name)
-                let audioGroup = MPNowPlayingInfoLanguageOptionGroup(languageOptions: [audioLang], defaultLanguageOption: nil, allowEmptySelection: false)
-                langs.append(audioGroup)
-                if track.isEnabled {
-                    current.append(audioLang)
-                }
-            }
-        }
-        if !langs.isEmpty {
-            MPRemoteCommandCenter.shared().enableLanguageOptionCommand.isEnabled = true
-        }
-        MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPNowPlayingInfoPropertyAvailableLanguageOptions] = langs
-        MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPNowPlayingInfoPropertyCurrentLanguageOptions] = current
-    }
-
-    private func nextPlayer() {
-        if urls.count > 1, let index = urls.firstIndex(of: url), index < urls.count - 1 {
-            isAutoPlay = true
-            url = urls[index + 1]
-        }
-    }
-
-    private func previousPlayer() {
-        if urls.count > 1, let index = urls.firstIndex(of: url), index > 0 {
-            isAutoPlay = true
-            url = urls[index - 1]
-        }
-    }
-
     func seek(time: TimeInterval) {
         seek(time: time, autoPlay: options.isSeekedAutoPlay) { _ in
-        }
-    }
-
-    public func registerRemoteControllEvent() {
-        let remoteCommand = MPRemoteCommandCenter.shared()
-        remoteCommand.playCommand.addTarget { [weak self] _ in
-            guard let self else {
-                return .commandFailed
-            }
-            self.play()
-            return .success
-        }
-        remoteCommand.pauseCommand.addTarget { [weak self] _ in
-            guard let self else {
-                return .commandFailed
-            }
-            self.pause()
-            return .success
-        }
-        remoteCommand.togglePlayPauseCommand.addTarget { [weak self] _ in
-            guard let self else {
-                return .commandFailed
-            }
-            if self.state.isPlaying {
-                self.pause()
-            } else {
-                self.play()
-            }
-            return .success
-        }
-        remoteCommand.stopCommand.addTarget { [weak self] _ in
-            guard let self else {
-                return .commandFailed
-            }
-            self.player.shutdown()
-            return .success
-        }
-        remoteCommand.nextTrackCommand.addTarget { [weak self] _ in
-            guard let self else {
-                return .commandFailed
-            }
-            self.nextPlayer()
-            return .success
-        }
-        remoteCommand.previousTrackCommand.addTarget { [weak self] _ in
-            guard let self else {
-                return .commandFailed
-            }
-            self.previousPlayer()
-            return .success
-        }
-        remoteCommand.changeRepeatModeCommand.addTarget { [weak self] event in
-            guard let self, let event = event as? MPChangeRepeatModeCommandEvent else {
-                return .commandFailed
-            }
-            self.options.isLoopPlay = event.repeatType != .off
-            return .success
-        }
-        remoteCommand.changeShuffleModeCommand.isEnabled = false
-        // remoteCommand.changeShuffleModeCommand.addTarget {})
-        remoteCommand.changePlaybackRateCommand.supportedPlaybackRates = [0.5, 1, 1.5, 2]
-        remoteCommand.changePlaybackRateCommand.addTarget { [weak self] event in
-            guard let self, let event = event as? MPChangePlaybackRateCommandEvent else {
-                return .commandFailed
-            }
-            self.player.playbackRate = event.playbackRate
-            return .success
-        }
-        remoteCommand.skipForwardCommand.preferredIntervals = [15]
-        remoteCommand.skipForwardCommand.addTarget { [weak self] event in
-            guard let self, let event = event as? MPSkipIntervalCommandEvent else {
-                return .commandFailed
-            }
-            self.seek(time: self.player.currentPlaybackTime + event.interval)
-            return .success
-        }
-        remoteCommand.skipBackwardCommand.preferredIntervals = [15]
-        remoteCommand.skipBackwardCommand.addTarget { [weak self] event in
-            guard let self, let event = event as? MPSkipIntervalCommandEvent else {
-                return .commandFailed
-            }
-            self.seek(time: self.player.currentPlaybackTime - event.interval)
-            return .success
-        }
-        remoteCommand.changePlaybackPositionCommand.addTarget { [weak self] event in
-            guard let self, let event = event as? MPChangePlaybackPositionCommandEvent else {
-                return .commandFailed
-            }
-            self.seek(time: event.positionTime)
-            return .success
-        }
-        remoteCommand.enableLanguageOptionCommand.addTarget { [weak self] event in
-            guard let self, let event = event as? MPChangeLanguageOptionCommandEvent else {
-                return .commandFailed
-            }
-            let selectLang = event.languageOption
-            if selectLang.languageOptionType == .audible,
-               let trackToSelect = self.player.tracks(mediaType: .audio).first(where: { $0.name == selectLang.displayName })
-            {
-                self.player.select(track: trackToSelect)
-            }
-            return .success
         }
     }
 
@@ -648,10 +480,6 @@ extension KSPlayerLayer {
         guard state.isPlaying, !player.isExternalPlaybackActive else {
             return
         }
-        if #available(tvOS 14.0, *), player.pipController?.isPictureInPictureActive == true {
-            return
-        }
-
         if KSOptions.canBackgroundPlay {
             player.enterBackground()
             return

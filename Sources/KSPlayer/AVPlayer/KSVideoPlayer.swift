@@ -218,6 +218,10 @@ extension KSVideoPlayer: UIViewRepresentable {
 }
 
 extension KSVideoPlayer.Coordinator: KSPlayerLayerDelegate {
+    public func audioData(data: [Float]) {
+        
+    }
+    
     public func player(layer: KSPlayerLayer, state: KSPlayerState) {
         onStateChanged?(layer, state)
         if state == .readyToPlay {

@@ -104,7 +104,7 @@ open class KSOptions {
     public internal(set) var decodeAudioTime = 0.0
     public internal(set) var decodeVideoTime = 0.0
     public init() {
-        formatContextOptions["user_agent"] = userAgent
+        //        formatContextOptions["user_agent"] = userAgent
         // 参数的配置可以参考protocols.texi 和 http.c
         // 这个一定要，不然有的流就会判断不准FieldOrder
         formatContextOptions["scan_all_pmts"] = 1
@@ -113,21 +113,21 @@ open class KSOptions {
         formatContextOptions["reconnect_streamed"] = 1
         // 这个是用来开启http的链接复用（keep-alive）。vlc默认是打开的，所以这边也默认打开。
         // 开启这个，百度网盘的视频链接无法播放
-        // formatContextOptions["multiple_requests"] = 1
+        formatContextOptions["multiple_requests"] = 1
         // 下面是用来处理秒开的参数，有需要的自己打开。默认不开，不然在播放某些特殊的ts直播流会频繁卡顿。
-//        formatContextOptions["auto_convert"] = 0
-//        formatContextOptions["fps_probe_size"] = 3
-//        formatContextOptions["rw_timeout"] = 10_000_000
-//        formatContextOptions["max_analyze_duration"] = 300 * 1000
+        //        formatContextOptions["auto_convert"] = 0
+        //        formatContextOptions["fps_probe_size"] = 3
+        //        formatContextOptions["rw_timeout"] = 10_000_000
+        //        formatContextOptions["max_analyze_duration"] = 300 * 1000
         // 默认情况下允许所有协议，只有嵌套协议才需要指定这个协议子集，例如m3u8里面有http。
-//        formatContextOptions["protocol_whitelist"] = "file,http,https,tcp,tls,crypto,async,cache,data,httpproxy"
+        formatContextOptions["protocol_whitelist"] = "file,http,https,tcp,tls,crypto,async,cache,data,httpproxy"
         // 开启这个，纯ipv6地址会无法播放。并且有些视频结束了，但还会一直尝试重连。所以这个值默认不设置
-//        formatContextOptions["reconnect_at_eof"] = 1
+        //        formatContextOptions["reconnect_at_eof"] = 1
         // 开启这个，会导致tcp Failed to resolve hostname 还会一直重试
-//        formatContextOptions["reconnect_on_network_error"] = 1
+        //        formatContextOptions["reconnect_on_network_error"] = 1
         // There is total different meaning for 'listen_timeout' option in rtmp
         // set 'listen_timeout' = -1 for rtmp、rtsp
-//        formatContextOptions["listen_timeout"] = 3
+        //        formatContextOptions["listen_timeout"] = 3
         decoderOptions["threads"] = "auto"
         decoderOptions["refcounted_frames"] = "1"
     }

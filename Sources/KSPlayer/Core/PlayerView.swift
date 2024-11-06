@@ -39,6 +39,10 @@ public protocol PlayerControllerDelegate: AnyObject {
 }
 
 open class PlayerView: UIView, KSPlayerLayerDelegate, KSSliderDelegate {
+    public func audioData(data: [Float]) {
+        
+    }
+    
     public typealias ControllerDelegate = PlayerControllerDelegate
     public var playerLayer: KSPlayerLayer? {
         didSet {

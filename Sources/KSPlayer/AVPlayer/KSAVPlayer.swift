@@ -360,6 +360,24 @@ extension KSAVPlayer {
 }
 
 extension KSAVPlayer: MediaPlayerProtocol {
+    public var bypass: Bool {
+        get {
+            true
+        }
+        set {
+            
+        }
+    }
+    
+    public var equalizer: [Float] {
+        get {
+            []
+        }
+        set {
+            
+        }
+    }
+    
     public var subtitleDataSouce: SubtitleDataSouce? { nil }
     public var isPlaying: Bool { player.rate > 0 ? true : playbackState == .playing }
     public var view: UIView? { playerView }

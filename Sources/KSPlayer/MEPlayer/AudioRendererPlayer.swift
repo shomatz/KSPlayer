@@ -9,6 +9,12 @@ import AVFoundation
 import Foundation
 
 public class AudioRendererPlayer: AudioOutput {
+    public var delegate: (any AudioOutputDelegate)?
+    
+    public var bypass: Bool = false
+    
+    public var equalizer: [Float] = []
+    
     public var playbackRate: Float = 1 {
         didSet {
             if !isPaused {

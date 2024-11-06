@@ -10,6 +10,12 @@ import AVFAudio
 import CoreAudio
 
 public final class AudioUnitPlayer: AudioOutput {
+    public var delegate: (any AudioOutputDelegate)?
+    
+    public var bypass: Bool = false
+    
+    public var equalizer: [Float] = []
+    
     private var audioUnitForOutput: AudioUnit!
     private var currentRenderReadOffset = UInt32(0)
     private var sourceNodeAudioFormat: AVAudioFormat?

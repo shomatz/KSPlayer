@@ -125,6 +125,7 @@ public class KSMEPlayer: NSObject {
         }
         self.options = options
         super.init()
+        audioOutput.delegate = self
         playerItem.delegate = self
         audioOutput.renderSource = playerItem
         videoOutput?.renderSource = playerItem
@@ -188,6 +189,12 @@ private extension KSMEPlayer {
         audioOutput.flush()
     }
     #endif
+}
+
+extension KSMEPlayer: AudioOutputDelegate {
+    public func audioData(data: [Float]) {
+        delegate?.audioData(data: data)
+    }
 }
 
 extension KSMEPlayer: MEPlayerDelegate {
@@ -289,6 +296,32 @@ extension KSMEPlayer: MEPlayerDelegate {
 }
 
 extension KSMEPlayer: MediaPlayerProtocol {
+    public var audioData: Bool {
+        get {
+            audioOutput.bypass
+        }
+        set {
+            audioOutput.bypass = newValue
+        }
+    }
+    public var bypass: Bool {
+        get {
+            audioOutput.bypass
+        }
+        set {
+            audioOutput.bypass = newValue
+        }
+    }
+    
+    public var equalizer: [Float] {
+        get {
+            audioOutput.equalizer
+        }
+        set {
+            audioOutput.equalizer = newValue
+        }
+    }
+    
     public var chapters: [Chapter] {
         playerItem.chapters
     }

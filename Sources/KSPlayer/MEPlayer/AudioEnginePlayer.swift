@@ -8,12 +8,20 @@
 import AVFoundation
 import CoreAudio
 
+@MainActor
+public protocol AudioOutputDelegate: AnyObject {
+    func audioData(data: [Float])
+}
+
 public protocol AudioOutput: FrameOutput {
+    var delegate: AudioOutputDelegate? { get set }
     var playbackRate: Float { get set }
     var volume: Float { get set }
     var isMuted: Bool { get set }
     init()
     func prepare(audioFormat: AVAudioFormat)
+    var bypass: Bool { get set }
+    var equalizer: [Float] { get set }
 }
 
 public protocol AudioDynamicsProcessor {
@@ -101,14 +109,20 @@ public final class AudioEngineDynamicsPlayer: AudioEnginePlayer, AudioDynamicsPr
 }
 
 public class AudioEnginePlayer: AudioOutput {
+    public weak var delegate: AudioOutputDelegate?
+    
     public let engine = AVAudioEngine()
     private var sourceNode: AVAudioSourceNode?
     private var sourceNodeAudioFormat: AVAudioFormat?
+    
+    let frequencies: [Int] = [32, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+    private let nbandEQ = AVAudioUnitEQ(numberOfBands: 10)
 
 //    private let reverb = AVAudioUnitReverb()
 //    private let nbandEQ = AVAudioUnitEQ()
 //    private let distortion = AVAudioUnitDistortion()
 //    private let delay = AVAudioUnitDelay()
+    
     private let timePitch = AVAudioUnitTimePitch()
     private var sampleSize = UInt32(MemoryLayout<Float>.size)
     private var currentRenderReadOffset = UInt32(0)
@@ -149,8 +163,38 @@ public class AudioEnginePlayer: AudioOutput {
         }
     }
 
+    public var bypass: Bool {
+        get {
+            nbandEQ.bands.first?.bypass ?? true
+        }
+        set {
+            for i in 0...(nbandEQ.bands.count-1) {
+                nbandEQ.bands[i].bypass = newValue
+            }
+        }
+    }
+    
+    public var equalizer: [Float] {
+        get {
+            nbandEQ.bands.map(\.gain)
+        }
+        set {
+            for i in 0...(nbandEQ.bands.count-1) {
+                nbandEQ.bands[i].gain = newValue[i]
+            }
+        }
+    }
+
     public required init() {
+        nbandEQ.globalGain = 1
+        for i in 0...(nbandEQ.bands.count-1) {
+            nbandEQ.bands[i].frequency  = Float(frequencies[i])
+            nbandEQ.bands[i].gain       = 0
+            nbandEQ.bands[i].bypass     = true
+            nbandEQ.bands[i].filterType = i == 0 ? .lowShelf : i == 9 ? .highShelf : .parametric
+        }
         engine.attach(timePitch)
+        engine.attach(nbandEQ)
         if let audioUnit = engine.outputNode.audioUnit {
             addRenderNotify(audioUnit: audioUnit)
         }
@@ -195,6 +239,19 @@ public class AudioEnginePlayer: AudioOutput {
         }
         // 一定要传入format，这样多音轨音响才不会有问题。
         engine.connect(nodes: nodes, format: audioFormat)
+//        sourceNode.installTap(onBus: 0, bufferSize: 1024, format: nil) { (buffer: AVAudioPCMBuffer, _: AVAudioTime) in
+//            DispatchQueue.main.async {
+//                if let floatBuffer = buffer.floatChannelData {
+//                    let first = floatBuffer[0]
+//                    let frameLength = Int(buffer.frameLength)
+//                    
+//                    let samples: [Float] = Array(UnsafeBufferPointer(start: first, count: frameLength))
+//                    
+//                    let chunkedSamples: [Float] = samples.chunkSampling(into: Int(frameLength / 6))
+//                    self.delegate?.audioData(data: chunkedSamples)
+//                }
+//            }
+//        }
         engine.prepare()
         if isRunning {
             try? engine.start()
@@ -206,7 +263,7 @@ public class AudioEnginePlayer: AudioOutput {
     }
 
     func audioNodes() -> [AVAudioNode] {
-        [timePitch, engine.mainMixerNode]
+        [timePitch, nbandEQ, engine.mainMixerNode]
     }
 
     public func play() {
@@ -335,4 +392,32 @@ extension AVAudioEngine {
             connect(nodes[i], to: nodes[i + 1], format: format)
         }
     }
+}
+
+extension Array where Element == Float {
+    func average() -> Element {
+        var i: Element = 0
+        var total: Element = 0
+        
+        for value in self {
+            total = total + value
+            i += 1
+        }
+        
+        return total / i
+    }
+    func chunk(into size: Int) -> [[Element]] {
+        return stride(from: 0, to: count, by: size).map {
+            Array(self[$0 ..< Swift.min($0 + size, count)])
+        }
+    }
+    func chunkSampling(into size: Int) -> [Element] {
+        let chunked = chunk(into: size)
+        
+        return chunked.reduce(into: []) { result, chunk in
+            let average = chunk.average()
+            result.append(average)
+        }
+    }
+    
 }

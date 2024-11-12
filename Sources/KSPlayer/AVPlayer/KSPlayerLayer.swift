@@ -62,6 +62,7 @@ public protocol KSPlayerLayerDelegate: AnyObject {
     func player(layer: KSPlayerLayer, currentTime: TimeInterval, totalTime: TimeInterval)
     func player(layer: KSPlayerLayer, finish error: Error?)
     func player(layer: KSPlayerLayer, bufferedCount: Int, consumeTime: TimeInterval)
+    func bitRateDidChange(oldBitRate: Int64, newBitrate: Int64)
     func audioData(data: [Float])
 }
 
@@ -338,6 +339,10 @@ open class KSPlayerLayer: NSObject {
 // MARK: - MediaPlayerDelegate
 
 extension KSPlayerLayer: MediaPlayerDelegate {
+    public func bitRateDidChange(oldBitRate: Int64, newBitrate: Int64) {
+        delegate?.bitRateDidChange(oldBitRate: oldBitRate, newBitrate: newBitrate)
+    }
+    
     public func audioData(data: [Float]) {
         delegate?.audioData(data: data)
     }

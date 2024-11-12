@@ -39,6 +39,10 @@ public protocol PlayerControllerDelegate: AnyObject {
 }
 
 open class PlayerView: UIView, KSPlayerLayerDelegate, KSSliderDelegate {
+    public func bitRateDidChange(oldBitRate: Int64, newBitrate: Int64) {
+        
+    }
+    
     public func audioData(data: [Float]) {
         
     }

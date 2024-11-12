@@ -759,9 +759,9 @@ extension MEPlayerItem: CodecCapacityDelegate {
         else {
             return
         }
-        assetTracks.first { $0.mediaType == .video && $0.bitRate == oldBitRate }?.isEnabled = false
-        newFFmpegAssetTrack.isEnabled = true
-        findBestAudio(videoTrack: newFFmpegAssetTrack)
+//        assetTracks.first { $0.mediaType == .video && $0.bitRate == oldBitRate }?.isEnabled = false
+//        newFFmpegAssetTrack.isEnabled = true
+//        findBestAudio(videoTrack: newFFmpegAssetTrack)
         let bitRateState = VideoAdaptationState.BitRateState(bitRate: newBitrate, time: CACurrentMediaTime())
         videoAdaptation?.bitRateStates.append(bitRateState)
         delegate?.sourceDidChange(oldBitRate: oldBitRate, newBitrate: newBitrate)

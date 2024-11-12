@@ -218,6 +218,10 @@ extension KSVideoPlayer: UIViewRepresentable {
 }
 
 extension KSVideoPlayer.Coordinator: KSPlayerLayerDelegate {
+    public func bitRateDidChange(oldBitRate: Int64, newBitrate: Int64) {
+        
+    }
+    
     public func audioData(data: [Float]) {
         
     }

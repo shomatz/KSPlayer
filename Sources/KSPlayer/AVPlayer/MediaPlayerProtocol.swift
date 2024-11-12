@@ -115,6 +115,7 @@ public protocol MediaPlayerDelegate: AnyObject {
     func playBack(player: some MediaPlayerProtocol, loopCount: Int)
     func finish(player: some MediaPlayerProtocol, error: Error?)
     func audioData(data: [Float])
+    func bitRateDidChange(oldBitRate: Int64, newBitrate: Int64)
 }
 
 public protocol MediaPlayerTrack: AnyObject, CustomStringConvertible {

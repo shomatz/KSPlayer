@@ -5,6 +5,7 @@
 //  Created by kintan on 2018/3/11.
 //
 
+import Accelerate
 import AVFoundation
 import CoreAudio
 
@@ -115,7 +116,7 @@ public class AudioEnginePlayer: AudioOutput {
     private var sourceNode: AVAudioSourceNode?
     private var sourceNodeAudioFormat: AVAudioFormat?
     
-    let frequencies: [Int] = [32, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+    let frequencies: [Int] = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
     private let nbandEQ = AVAudioUnitEQ(numberOfBands: 10)
 
 //    private let reverb = AVAudioUnitReverb()
@@ -239,6 +240,21 @@ public class AudioEnginePlayer: AudioOutput {
         }
         // 一定要传入format，这样多音轨音响才不会有问题。
         engine.connect(nodes: nodes, format: audioFormat)
+        if KSOptions.enableFft {
+            let fftSetup = vDSP_DFT_zop_CreateSetup(
+                nil,
+                UInt(KSOptions.fftBufferSize),
+                vDSP_DFT_Direction.FORWARD
+            )
+            sourceNode.installTap(onBus: 0, bufferSize: UInt32(KSOptions.fftBufferSize), format: nil) { (buffer: AVAudioPCMBuffer, _: AVAudioTime) in
+                DispatchQueue.main.async {
+                    guard let channelData = buffer.floatChannelData?[0], (fftSetup != nil) else { return }
+                    let magnitudes = self.fft(data: channelData, setup: fftSetup!)
+                    self.delegate?.audioData(data: magnitudes)
+                }
+            }
+        }
+        
 //        sourceNode.installTap(onBus: 0, bufferSize: 1024, format: nil) { (buffer: AVAudioPCMBuffer, _: AVAudioTime) in
 //            DispatchQueue.main.async {
 //                if let floatBuffer = buffer.floatChannelData {
@@ -260,6 +276,34 @@ public class AudioEnginePlayer: AudioOutput {
                 self?.play()
             }
         }
+    }
+    
+    func fft(data: UnsafeMutablePointer<Float>, setup: OpaquePointer) -> [Float] {
+        var realIn = [Float](repeating: 0, count: KSOptions.fftBufferSize)
+        var imagIn = [Float](repeating: 0, count: KSOptions.fftBufferSize)
+        var realOut = [Float](repeating: 0, count: KSOptions.fftBufferSize)
+        var imagOut = [Float](repeating: 0, count: KSOptions.fftBufferSize)
+            
+        for i in 0 ..< KSOptions.fftBufferSize {
+            realIn[i] = data[i]
+        }
+        
+        vDSP_DFT_Execute(setup, &realIn, &imagIn, &realOut, &imagOut)
+        
+        var magnitudes = [Float](repeating: 0, count: KSOptions.barAmount)
+        
+        realOut.withUnsafeMutableBufferPointer { realBP in
+            imagOut.withUnsafeMutableBufferPointer { imagBP in
+                var complex = DSPSplitComplex(realp: realBP.baseAddress!, imagp: imagBP.baseAddress!)
+                vDSP_zvabs(&complex, 1, &magnitudes, 1, UInt(KSOptions.barAmount))
+            }
+        }
+        
+        var normalizedMagnitudes = [Float](repeating: 0.0, count: KSOptions.barAmount)
+        var scalingFactor = Float(1)
+        vDSP_vsmul(&magnitudes, 1, &scalingFactor, &normalizedMagnitudes, 1, UInt(KSOptions.barAmount))
+            
+        return normalizedMagnitudes
     }
 
     func audioNodes() -> [AVAudioNode] {

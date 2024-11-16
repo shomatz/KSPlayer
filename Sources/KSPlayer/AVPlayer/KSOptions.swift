@@ -455,6 +455,10 @@ public enum VideoInterlacingType: String {
 }
 
 public extension KSOptions {
+    static var fftBufferSize = 1024
+    static var enableFft = true
+    static var barAmount: Int = 40
+    static var updateProgressInterval: TimeInterval = 0.1
     static var firstPlayerType: MediaPlayerProtocol.Type = KSAVPlayer.self
     static var secondPlayerType: MediaPlayerProtocol.Type?
     /// 最低缓存视频时间

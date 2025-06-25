@@ -611,14 +611,14 @@ extension MEPlayerItem {
 
 extension MEPlayerItem: MediaPlayback {
     var seekable: Bool {
-        guard let formatCtx else {
-            return false
-        }
-        var seekable = true
-        if let ioContext = formatCtx.pointee.pb {
-            seekable = ioContext.pointee.seekable > 0
-        }
-        return seekable
+        // guard let formatCtx else {
+        //     return false
+        // }
+        // var seekable = true
+        // if let ioContext = formatCtx.pointee.pb {
+        //     seekable = ioContext.pointee.seekable > 0
+        // }
+        return true
     }
 
     public func prepareToPlay() {
